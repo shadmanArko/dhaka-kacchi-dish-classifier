@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhaka Kacchi — The AI That Knows Biryani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --maroon: #2A0E10;
+    --maroon-panel: #3D1A16;
+    --gold: #D4A017;
+    --clay: #C1552C;
+    --cream: #F5E9D3;
+    --cream-dim: #C9B99C;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--maroon);
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6vh 6vw 4vh;
+  }
+
+  .wrap { max-width: 640px; width: 100%; }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    animation: rise 0.7s ease-out;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .eyebrow-line {
+    font-size: 0.95rem;
+    color: var(--cream-dim);
+    margin-bottom: 0.8rem;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3rem);
+    line-height: 1.15;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  header p {
+    color: var(--cream-dim);
+    font-size: 1.02rem;
+    line-height: 1.65;
+    max-width: 48ch;
+    margin: 0 auto;
+  }
+
+  .cta-row {
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1.8rem;
+  }
+
+  .cta {
+    display: inline-block;
+    padding: 0.85rem 1.6rem;
+    border-radius: 999px;
+    font-size: 0.96rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  .cta:hover { transform: translateY(-2px); }
+
+  .cta.primary {
+    background: var(--gold);
+    color: var(--maroon);
+  }
+
+  .cta.primary:hover { background: #e5b12b; }
+
+  .cta.secondary {
+    background: transparent;
+    color: var(--cream);
+    border: 1.5px solid rgba(245, 233, 211, 0.35);
+  }
+
+  .cta.secondary:hover { border-color: var(--cream); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 3rem 0 2rem;
+    color: var(--cream-dim);
+    font-size: 0.9rem;
+  }
+
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(245, 233, 211, 0.15);
+  }
+
+  .demo-intro {
+    text-align: center;
+    margin-bottom: 1.6rem;
+  }
+
+  .demo-intro h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin: 0 0 0.5rem;
+  }
+
+  .demo-intro p {
+    color: var(--cream-dim);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    max-width: 42ch;
+    margin: 0 auto;
+  }
+
+  .dropzone {
+    border: 2px solid rgba(245, 233, 211, 0.25);
+    border-radius: 24px;
+    padding: 2.8rem 2rem;
+    text-align: center;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    background: rgba(245, 233, 211, 0.02);
+  }
+
+  .dropzone.drag {
+    border-color: var(--gold);
+    background: rgba(212, 160, 23, 0.06);
+  }
+
+  .dropzone input { display: none; }
+
+  .upload-btn {
+    font-family: inherit;
+    font-size: 0.96rem;
+    font-weight: 500;
+    color: var(--maroon);
+    background: var(--gold);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .upload-btn:hover { background: #e5b12b; }
+
+  .dropzone .hint {
+    font-size: 0.9rem;
+    color: var(--cream-dim);
+    margin-top: 0.9rem;
+  }
+
+  .preview {
+    display: none;
+    margin-top: 1.75rem;
+    text-align: center;
+  }
+
+  .preview img {
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  .result {
+    margin-top: 2rem;
+    padding: 1.75rem;
+    background: var(--maroon-panel);
+    border-radius: 16px;
+    display: none;
+  }
+
+  .result .label {
+    font-size: 0.88rem;
+    color: var(--cream-dim);
+    margin-bottom: 0.35rem;
+  }
+
+  .result .dish {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 2rem;
+    color: var(--gold);
+    margin: 0 0 1rem;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(245, 233, 211, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--clay), var(--gold));
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.6s ease;
+  }
+
+  .confidence-text {
+    margin-top: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--cream-dim);
+  }
+
+  .biryani-note {
+    margin-top: 0.9rem;
+    font-size: 0.9rem;
+    color: var(--gold);
+    display: none;
+  }
+
+  .status {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-size: 0.92rem;
+    color: var(--cream-dim);
+    min-height: 1.2rem;
+  }
+
+  .status.error { color: var(--clay); }
+
+  footer {
+    margin-top: 3.5rem;
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--cream-dim);
+    line-height: 1.9;
+  }
+
+  footer a {
+    color: var(--gold);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(212, 160, 23, 0.4);
+  }
+
+  footer a:hover { border-bottom-color: var(--gold); }
+
+  @media (prefers-reduced-motion: reduce) {
+    header { animation: none; }
+    .bar-fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow-line">Dhaka Kacchi — Berlin</div>
+    <h1>I make the biryani.<br>My <em>AI</em> can spot it.</h1>
+    <p>I trained a vision model to recognize South Asian dishes from a photo — biryani included. It's a real fine-tuned Vision Transformer, not a gimmick. Try it below, or just skip to the good part and order the real thing.</p>
+    <div class="cta-row">
+      <a class="cta primary" href="https://www.dhakakacchi.com/" target="_blank">Order Kacchi Biryani</a>
+      <a class="cta secondary" href="https://github.com/YOUR-USERNAME/dhaka-kacchi-dish-classifier" target="_blank">See how the AI was built</a>
+    </div>
+  </header>
+
+  <div class="divider">try it yourself</div>
+
+  <div class="demo-intro">
+    <h2>Think it can tell a biryani from a pulao?</h2>
+    <p>Upload a photo of a South Asian dish and see what the model thinks it's looking at.</p>
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*">
+    <button type="button" class="upload-btn" id="uploadBtn">Choose a photo</button>
+    <div class="hint">or drag one in here</div>
+  </div>
+
+  <div class="preview" id="preview">
+    <img id="previewImg" alt="Uploaded dish photo">
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="result" id="result">
+    <div class="label">This looks like</div>
+    <div class="dish" id="dishName">—</div>
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    <div class="confidence-text" id="confidenceText"></div>
+    <div class="biryani-note" id="biryaniNote">That's the one I make. <a href="https://YOUR-WEBSITE.com" target="_blank" style="color: var(--gold);">Order it here →</a></div>
+  </div>
+
+  <footer>
+    Data, fine-tuning, evaluation, and this demo — all documented.<br>
+    <a href="https://github.com/YOUR-USERNAME/dhaka-kacchi-dish-classifier" target="_blank">View the project on GitHub</a>
+  </footer>
+</div>
+
+<script>
+  // Change this once the API is deployed to AWS
+  const API_URL = "http://127.0.0.1:8000/predict";
+
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const preview = document.getElementById("preview");
+  const previewImg = document.getElementById("previewImg");
+  const statusEl = document.getElementById("status");
+  const resultEl = document.getElementById("result");
+  const dishName = document.getElementById("dishName");
+  const barFill = document.getElementById("barFill");
+  const confidenceText = document.getElementById("confidenceText");
+  const biryaniNote = document.getElementById("biryaniNote");
+
+  uploadBtn.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  ["dragover", "dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, e => e.preventDefault());
+  });
+  dropzone.addEventListener("dragover", () => dropzone.classList.add("drag"));
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+  dropzone.addEventListener("drop", e => {
+    dropzone.classList.remove("drag");
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    previewImg.src = URL.createObjectURL(file);
+    preview.style.display = "block";
+    resultEl.style.display = "none";
+    biryaniNote.style.display = "none";
+    predict(file);
+  }
+
+  async function predict(file) {
+    statusEl.textContent = "Looking closely...";
+    statusEl.classList.remove("error");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(API_URL, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Server responded with " + res.status);
+      const data = await res.json();
+
+      statusEl.textContent = "";
+      dishName.textContent = data.prediction;
+      const pct = Math.round(data.confidence * 100);
+      barFill.style.width = pct + "%";
+      confidenceText.textContent = pct + "% confidence";
+      resultEl.style.display = "block";
+
+      if (data.prediction === "Biryani") {
+        biryaniNote.style.display = "block";
+      }
+    } catch (err) {
+      statusEl.textContent = "Couldn't reach the model — is the API running?";
+      statusEl.classList.add("error");
+    }
+  }
+</script>
+
+</body>
+</html>

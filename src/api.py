@@ -1,0 +1,58 @@
+import io
+import os
+import torch
+from fastapi import FastAPI, File, UploadFile
+from PIL import Image
+from transformers import AutoImageProcessor, AutoModelForImageClassification
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+# Build an absolute path to model_export/, anchored to this file's location —
+# not to whatever directory the process happens to be launched from.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "model_export")
+MODEL_DIR = os.path.normpath(MODEL_DIR)
+
+static_dir = os.path.join(BASE_DIR, "..", "frontend")
+static_dir = os.path.normpath(static_dir)
+
+app = FastAPI(title="Dhaka Kacchi Dish Classifier API")
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # for now, allow any origin — we'll tighten this once deployed
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+processor = AutoImageProcessor.from_pretrained(MODEL_DIR, local_files_only=True)
+model = AutoModelForImageClassification.from_pretrained(MODEL_DIR, local_files_only=True)
+model.eval()
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse(os.path.join(static_dir, "index.html"))
+
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+    inputs = processor(images=image, return_tensors="pt")
+
+    with torch.no_grad():  # no gradients needed at inference time — saves memory/compute
+        outputs = model(**inputs)
+        logits = outputs.logits
+        probs = torch.softmax(logits, dim=-1)[0]
+
+    predicted_idx = probs.argmax().item()
+    predicted_label = model.config.id2label[predicted_idx]
+    confidence = probs[predicted_idx].item()
+
+    return {
+        "prediction": predicted_label,
+        "confidence": round(confidence, 4),
+    }
