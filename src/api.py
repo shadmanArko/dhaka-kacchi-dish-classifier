@@ -7,7 +7,7 @@ from transformers import AutoImageProcessor, AutoModelForImageClassification
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-MODEL_DIR = "shadmanArko/dhaka-kacchi-dish-classifier"   # now a Hub repo ID, not a local path
+MODEL_DIR = "shadmanArko/dhaka-kacchi-dish-classifier"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(BASE_DIR, "..", "frontend")
@@ -26,6 +26,7 @@ processor = AutoImageProcessor.from_pretrained(MODEL_DIR)
 model = AutoModelForImageClassification.from_pretrained(MODEL_DIR)
 model.eval()
 
+
 @app.get("/")
 def serve_frontend():
     return FileResponse(os.path.join(static_dir, "index.html"))
@@ -38,7 +39,7 @@ async def predict(file: UploadFile = File(...)):
 
     inputs = processor(images=image, return_tensors="pt")
 
-    with torch.no_grad():  # no gradients needed at inference time — saves memory/compute
+    with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
         probs = torch.softmax(logits, dim=-1)[0]
