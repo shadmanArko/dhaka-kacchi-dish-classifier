@@ -5,30 +5,25 @@ from fastapi import FastAPI, File, UploadFile
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
-# Build an absolute path to model_export/, anchored to this file's location —
-# not to whatever directory the process happens to be launched from.
+MODEL_DIR = "shadmanArko/dhaka-kacchi-dish-classifier"   # now a Hub repo ID, not a local path
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "model_export")
-MODEL_DIR = os.path.normpath(MODEL_DIR)
-
 static_dir = os.path.join(BASE_DIR, "..", "frontend")
 static_dir = os.path.normpath(static_dir)
 
 app = FastAPI(title="Dhaka Kacchi Dish Classifier API")
 
-from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # for now, allow any origin — we'll tighten this once deployed
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-processor = AutoImageProcessor.from_pretrained(MODEL_DIR, local_files_only=True)
-model = AutoModelForImageClassification.from_pretrained(MODEL_DIR, local_files_only=True)
+processor = AutoImageProcessor.from_pretrained(MODEL_DIR)
+model = AutoModelForImageClassification.from_pretrained(MODEL_DIR)
 model.eval()
 
 @app.get("/")
