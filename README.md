@@ -2,7 +2,7 @@
 
 A fine-tuned Vision Transformer that identifies South Asian dishes (biryani included) from a photo — trained, evaluated, and served end-to-end as a real product, not a notebook demo.
 
-**🔗 Live demo:** [http://54.90.240.11:8000/](http://54.90.240.11:8000/) — deployed on AWS, live and testable by anyone
+**🔗 Live demo:** [https://classifier.dhakakacchi.com/](https://classifier.dhakakacchi.com/) — deployed on AWS behind Nginx with a free TLS certificate, live and testable by anyone
 **🤗 Model:** [shadmanArko/dhaka-kacchi-dish-classifier](https://huggingface.co/shadmanArko/dhaka-kacchi-dish-classifier)
 
 ![status](https://img.shields.io/badge/status-live-brightgreen) ![model](https://img.shields.io/badge/model-ViT--base-blue) ![deployment](https://img.shields.io/badge/deployed-AWS-orange)
@@ -29,7 +29,7 @@ This isn't just "train a model and stop" — it's the full lifecycle a productio
 | **Evaluation** | Held-out test set (never touched during training) scored with `classification_report` + confusion matrix, plus explicit analysis of the model's worst confusions (e.g. what biryani gets mistaken for) |
 | **Packaging** | Exported and pushed the final model to the **Hugging Face Hub** as a versioned, shareable artifact — not a local `.pt` file |
 | **Serving** | Wrapped inference in a **FastAPI** service with CORS handling, serving both the `/predict` endpoint and the static frontend |
-| **Deployment** | Shipped to **AWS**, live and publicly testable — no "clone this repo to try it" required |
+| **Deployment** | Shipped to **AWS**, running as a `systemd` service (auto-restarts on crash/reboot) behind **Nginx** with a **Let's Encrypt HTTPS certificate** on a custom subdomain — live and publicly testable, no "clone this repo to try it" required |
 | **Product framing** | The demo page itself is a real landing page, tied to an actual business (Dhaka Kacchi), not a bare Gradio widget |
 
 ## Tech stack
