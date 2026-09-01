@@ -321,8 +321,9 @@
 </div>
 
 <script>
-  // Change this once the API is deployed to AWS
-  const API_URL = "http://127.0.0.1:8000/predict";
+  // Relative path: works locally and in production since the frontend
+  // is served by the same FastAPI app that exposes /predict.
+  const API_URL = "/predict";
 
   const dropzone = document.getElementById("dropzone");
   const fileInput = document.getElementById("fileInput");
