@@ -361,15 +361,48 @@
     predict(file);
   }
 
+  // Downscale large photos in the browser before uploading. Phone photos are
+  // often 2–8 MB, which the model doesn't need (it sees 224px) and which can
+  // trip the server's upload size limit. Resize the longest side to <=1024px
+  // and re-encode as JPEG. Returns a Blob; falls back to the original file if
+  // anything goes wrong.
+  async function downscaleImage(file, maxSide = 1024, quality = 0.9) {
+    if (!file.type.startsWith("image/")) return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      // Already small enough — send as-is.
+      if (scale === 1) return file;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(resolve =>
+        canvas.toBlob(resolve, "image/jpeg", quality)
+      );
+      return blob || file;
+    } catch (err) {
+      // Older browser or decode failure — let the upload proceed with the original.
+      return file;
+    }
+  }
+
   async function predict(file) {
     statusEl.textContent = "Looking closely...";
     statusEl.classList.remove("error");
 
+    const upload = await downscaleImage(file);
     const formData = new FormData();
-    formData.append("file", file);
+    // Keep a filename so the server sees an image upload.
+    formData.append("file", upload, upload.name || "photo.jpg");
 
     try {
       const res = await fetch(API_URL, { method: "POST", body: formData });
+      if (res.status === 413) {
+        throw new Error("too-large");
+      }
       if (!res.ok) throw new Error("Server responded with " + res.status);
       const data = await res.json();
 
@@ -384,7 +417,9 @@
         biryaniNote.style.display = "block";
       }
     } catch (err) {
-      statusEl.textContent = "Couldn't reach the model — is the API running?";
+      statusEl.textContent = err.message === "too-large"
+        ? "That image is too large to upload. Try a smaller photo."
+        : "Couldn't reach the model — is the API running?";
       statusEl.classList.add("error");
     }
   }
