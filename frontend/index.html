@@ -353,57 +353,96 @@
     if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
 
+  // Stay comfortably under the server's ~1 MB upload limit (leaves headroom
+  // for multipart overhead), so any photo goes through after client-side
+  // compression regardless of the Nginx cap.
+  const UPLOAD_BUDGET = 900 * 1024;
+
+  function showError(message) {
+    statusEl.textContent = message;
+    statusEl.classList.add("error");
+    resultEl.style.display = "none";
+  }
+
   function handleFile(file) {
-    previewImg.src = URL.createObjectURL(file);
-    preview.style.display = "block";
     resultEl.style.display = "none";
     biryaniNote.style.display = "none";
+    statusEl.classList.remove("error");
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      preview.style.display = "none";
+      showError("That doesn't look like an image. Please upload a photo (JPG, PNG, or WebP).");
+      return;
+    }
+
+    previewImg.src = URL.createObjectURL(file);
+    preview.style.display = "block";
     predict(file);
   }
 
-  // Downscale large photos in the browser before uploading. Phone photos are
-  // often 2–8 MB, which the model doesn't need (it sees 224px) and which can
-  // trip the server's upload size limit. Resize the longest side to <=1024px
-  // and re-encode as JPEG. Returns a Blob; falls back to the original file if
-  // anything goes wrong.
-  async function downscaleImage(file, maxSide = 1024, quality = 0.9) {
-    if (!file.type.startsWith("image/")) return file;
-    try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-      // Already small enough — send as-is.
-      if (scale === 1) return file;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-      const blob = await new Promise(resolve =>
-        canvas.toBlob(resolve, "image/jpeg", quality)
-      );
-      return blob || file;
-    } catch (err) {
-      // Older browser or decode failure — let the upload proceed with the original.
+  // Shrink any photo until it's safely under UPLOAD_BUDGET. Small images in a
+  // format the server reads directly are sent untouched; larger ones are
+  // re-encoded as JPEG, dropping quality and then dimensions across attempts.
+  // The model only sees 224px internally, so there's no accuracy cost.
+  // Returns a Blob/File, or null if the image can't be decoded (e.g. an
+  // iPhone HEIC in a browser that doesn't support it).
+  async function prepareUpload(file) {
+    if (file.size <= UPLOAD_BUDGET && /jpe?g|png|webp/i.test(file.type)) {
       return file;
     }
+
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file);
+    } catch (err) {
+      return null; // unsupported / corrupt format
+    }
+
+    const qualities = [0.85, 0.8, 0.7, 0.6, 0.5, 0.4];
+    let maxSide = 1600;
+    let lastBlob = null;
+
+    for (const quality of qualities) {
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", quality));
+      if (blob) {
+        lastBlob = blob;
+        if (blob.size <= UPLOAD_BUDGET) return blob;
+      }
+      maxSide = Math.round(maxSide * 0.8); // shrink further for the next pass
+    }
+    return lastBlob; // best effort — near-budget even on pathological inputs
   }
 
   async function predict(file) {
     statusEl.textContent = "Looking closely...";
     statusEl.classList.remove("error");
 
-    const upload = await downscaleImage(file);
+    let upload;
+    try {
+      upload = await prepareUpload(file);
+    } catch (err) {
+      upload = null;
+    }
+
+    if (!upload) {
+      showError("Couldn't read this image. iPhone HEIC photos aren't supported in every browser — try a JPG or PNG.");
+      return;
+    }
+
     const formData = new FormData();
     // Keep a filename so the server sees an image upload.
     formData.append("file", upload, upload.name || "photo.jpg");
 
     try {
       const res = await fetch(API_URL, { method: "POST", body: formData });
-      if (res.status === 413) {
-        throw new Error("too-large");
-      }
-      if (!res.ok) throw new Error("Server responded with " + res.status);
+      if (res.status === 413) throw new Error("too-large");
+      if (!res.ok) throw new Error("bad-status");
       const data = await res.json();
 
       statusEl.textContent = "";
@@ -417,10 +456,9 @@
         biryaniNote.style.display = "block";
       }
     } catch (err) {
-      statusEl.textContent = err.message === "too-large"
-        ? "That image is too large to upload. Try a smaller photo."
-        : "Couldn't reach the model — is the API running?";
-      statusEl.classList.add("error");
+      showError(err.message === "too-large"
+        ? "This photo is too large even after compressing. Please try a smaller one."
+        : "Couldn't reach the model — please try again in a moment.");
     }
   }
 </script>
